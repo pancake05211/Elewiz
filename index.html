@@ -1,0 +1,144 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>ELEWIZ</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<style>
+:root{--bg:#0b1030;--fg:#fff;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:600 14px -apple-system,system-ui,sans-serif;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.f{position:fixed;pointer-events:none}
+#hud{left:14px;right:14px;top:calc(env(safe-area-inset-top,0px) + 8px);font-size:16px;text-shadow:0 1px 3px #000}
+#top{display:flex;justify-content:space-between}#hp{color:#ff5470;letter-spacing:2px}
+#boss{height:8px;background:#0006;border-radius:4px;margin-top:6px;display:none}#bf{display:block;height:100%;width:100%;background:#ff4d6d;border-radius:4px}
+#cb{margin-top:4px;color:#ffd166;font-size:13px}
+#book{right:12px;top:calc(env(safe-area-inset-top,0px) + 74px);font-size:11px;background:#0008;border-radius:10px;padding:6px 8px;line-height:1.5;pointer-events:auto}
+#msg{left:0;right:0;top:34%;text-align:center;font-size:20px;color:#fff;text-shadow:0 2px 6px #000;opacity:0;transition:opacity .3s}
+.l{display:inline-block;width:14px;text-align:center;border-radius:3px;color:#000;margin-right:2px}
+.A{background:#ff6b6b}.B{background:#ffd166}.X{background:#5ab0ff}.Y{background:#6ee7a0}.q{background:#555;color:#fff}
+#stick{left:calc(env(safe-area-inset-left,0px) + 22px);bottom:calc(env(safe-area-inset-bottom,0px) + 34px);width:130px;height:130px;border-radius:50%;background:#ffffff1c;border:2px solid #fff4;pointer-events:auto;touch-action:none}
+#knob{position:absolute;left:37px;top:37px;width:56px;height:56px;border-radius:50%;background:#ffffffaa}
+#pad{right:calc(env(safe-area-inset-right,0px) + 14px);bottom:calc(env(safe-area-inset-bottom,0px) + 30px);width:164px;height:164px}
+.b{position:absolute;width:62px;height:62px;border-radius:50%;border:0;font:800 22px system-ui;color:#000;pointer-events:auto;touch-action:none;box-shadow:0 3px 0 #0006}
+.b.on{transform:scale(.9);filter:brightness(1.4)}
+#bX{left:51px;top:0}#bA{right:0;top:51px}#bB{left:51px;bottom:0}#bY{left:0;top:51px}
+.d{width:64px;height:40px;border-radius:12px;background:#ffffff2a;color:#fff;font-size:16px;box-shadow:none;border:2px solid #fff5}
+#dL{left:calc(env(safe-area-inset-left,0px) + 50px);bottom:calc(env(safe-area-inset-bottom,0px) + 180px)}
+#dR{right:calc(env(safe-area-inset-right,0px) + 60px);bottom:calc(env(safe-area-inset-bottom,0px) + 206px)}
+#ov{position:fixed;inset:0;background:#0b1030f2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;gap:10px}
+#ov img{width:min(78vw,300px);border-radius:18px;box-shadow:0 0 40px #ff7a1a88}
+#ov h1{margin:0;font-size:44px;letter-spacing:6px;color:#ffb02e;text-shadow:0 0 18px #ff5a00}
+#ov p{margin:0;max-width:320px;font-weight:500;line-height:1.4;color:#cfd6ff}
+#go{font:800 20px system-ui;padding:14px 34px;border-radius:30px;border:0;background:#ffb02e;color:#000}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud" class="f"><div id="top"><span id="sc">0</span><span id="hp"></span></div><div id="boss"><i id="bf"></i></div><div id="cb"></div></div>
+<div id="book" class="f"></div><div id="msg" class="f"></div>
+<div id="stick" class="f"><div id="knob"></div></div>
+<button id="dL" class="b d f">L</button><button id="dR" class="b d f">R</button>
+<div id="pad" class="f"><button id="bX" class="b X">X</button><button id="bA" class="b A">A</button><button id="bB" class="b B">B</button><button id="bY" class="b Y">Y</button></div>
+<div id="ov"><img src="art.jpg" alt="Elewiz"><h1>ELEWIZ</h1>
+<p id="ovt">Fly with the stick. Tap A B X Y to do air tricks. Chain the right tricks to discover spells, then use them on the bosses. Tricks and dashes (L / R) make you untouchable.</p>
+<button id="go">TAP TO FLY</button></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),rnd=Math.random,PI=Math.PI;
+const R=new THREE.WebGLRenderer({canvas:$('c'),antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
+const S=new THREE.Scene();S.background=new THREE.Color(0x0b1030);S.fog=new THREE.Fog(0x0b1030,35,95);
+const C=new THREE.PerspectiveCamera(70,1,.2,200);
+function rs(){R.setSize(innerWidth,innerHeight,false);const a=innerWidth/innerHeight;C.aspect=a;C.fov=a<1?85:70;C.updateProjectionMatrix()}addEventListener('resize',rs);rs();
+S.add(new THREE.HemisphereLight(0xaab8ff,0x403060,1.1));const dl=new THREE.DirectionalLight(0xfff0e0,.9);dl.position.set(5,10,8);S.add(dl);
+const mat=(c,e)=>new THREE.MeshStandardMaterial({color:c,flatShading:true,roughness:.8,emissive:e||0}),bas=c=>new THREE.MeshBasicMaterial({color:c});
+const M=(g,m,x,y,z,p)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);if(p)p.add(o);return o};
+const CO=(r,h)=>new THREE.ConeGeometry(r,h,8),OC=r=>new THREE.OctahedronGeometry(r),BX=(a,b,c)=>new THREE.BoxGeometry(a,b,c);
+const W=new THREE.Group(),P=new THREE.Group(),RG=new THREE.Group();W.add(P);W.add(RG);S.add(W);
+M(BX(.12,.12,2),mat(0x74461f),0,-.35,0,P);
+let t=M(CO(.3,.55),mat(0xd9b34d),0,-.35,1.5,P);t.rotation.x=-PI/2;
+M(CO(.5,1.1),mat(0x3350e6),0,.25,0,P);M(OC(.22),mat(0xffcca6),0,.95,0,P);
+t=M(CO(.17,.4),mat(0xf2f2f2),0,.7,-.12,P);t.rotation.x=PI;
+M(new THREE.CylinderGeometry(.5,.5,.05,10),mat(0x8026bf),0,1.1,0,P);
+t=M(CO(.36,.85),mat(0x8026bf),0,1.55,0,P);t.rotation.x=-.2;
+M(BX(.06,1.3,.06),mat(0x80593a),.5,.35,-.5,P).rotation.x=-.35;
+const orbM=bas(0xffffff);M(OC(.17),orbM,.5,.98,-.72,P);
+for(let i=0;i<8;i++){const a=i*PI/4;M(OC(.1),orbM,Math.cos(a)*1.4,Math.sin(a)*1.4,0,RG)}RG.visible=false;
+const stp=[];for(let i=0;i<150;i++)stp.push((rnd()-.5)*170,rnd()*60-8,-90);
+const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(stp,3));
+S.add(new THREE.Points(sg,new THREE.PointsMaterial({size:1.3,color:0xffffff,fog:false})));
+M(new THREE.IcosahedronGeometry(9,0),new THREE.MeshBasicMaterial({color:0xfff0b8,fog:false}),-28,22,-85,S);
+const SC=[];for(let i=0;i<12;i++){const g=new THREE.Group(),k=i&1;
+ if(k){M(BX(2,.25,2),mat(0x40a640),0,0,0,g);const c=M(CO(.95,1.8),mat(0x66472f),0,-.9,0,g);c.rotation.x=PI}
+ else{M(BX(2,.6,1.2),mat(0xccccff),0,0,0,g);M(BX(1.2,.5,.9),mat(0xf2d9ff),.5,.4,0,g)}
+ S.add(g);g.userData.z0=-70+i*6;SC.push(g)}
+function place(g,first){const s=1.5+rnd()*2.5;g.scale.setScalar(s);g.position.set((rnd()<.5?-1:1)*(7+rnd()*14),-9+rnd()*14,first?g.userData.z0:-65-rnd()*20)}
+SC.forEach(g=>place(g,1));
+const BM=[],bmt=c=>{const m=mat(c);BM.push(m);return m},B=new THREE.Group();S.add(B);B.visible=false;
+const bb=M(OC(2),bmt(0xcc2626),0,0,0,B);bb.scale.set(1,.8,1.3);
+M(OC(1),bmt(0xcc2626),0,0,2.2,B);t=M(CO(.8,3),bmt(0xcc2626),0,0,-3.8,B);t.rotation.x=-PI/2;
+const wL=new THREE.Group(),wR=new THREE.Group();wL.position.set(1.5,.3,0);wR.position.set(-1.5,.3,0);B.add(wL,wR);
+t=M(CO(1.4,4),bmt(0xcc2626),0,2,0,wL);t=M(CO(1.4,4),bmt(0xcc2626),0,2,0,wR);
+M(CO(.2,.9),mat(0xf2e6b3),.5,1.3,2.2,B);M(CO(.2,.9),mat(0xf2e6b3),-.5,1.3,2.2,B);
+M(OC(.18),bas(0xff1a1a),.4,.3,3,B);M(OC(.18),bas(0xff1a1a),-.4,.3,3,B);
+const BC=[0xcc2626,0x33b34d,0xd98019,0x8c33cc];
+const mk=(c,s,n)=>Array.from({length:n},()=>{const m=M(OC(s),bas(c),0,0,0,S);m.visible=false;return{m,on:0,v:new THREE.Vector3(),d:0,g:0}});
+const PB=mk(0xffffff,.5,8),EB=mk(0xff3366,.55,12);EB.forEach(o=>M(OC(.25),bas(0xffe066),0,0,0,o.m));
+const SP=[{n:'Fireball',s:[0,0,1],d:2,c:0xff6619},{n:'Frostbolt',s:[1,2,3],d:2.5,c:0x4dccff},{n:'Lightning',s:[2,3,0],d:3,c:0xffff55},{n:'Gale Slash',s:[3,3,1],d:3.5,c:0x80ffa0},{n:'Starfall',s:[0,1,2,3],d:7,c:0xe680ff}];
+const LN='ABXY';
+let st=0,fr=0,flight=0,hp=5,score=0,combo=0,comboT=999,xp=0,lvl=0,shake=0,hf=0,dash=0,trick=-1,tt=0,msgT=0,bcd=0,px=0,py=0,pvx=0,bank=0,jx=0,jy=0,buf=[];
+const bo={on:0,hp:0,mx:0,x:0,y:0,z:-24,t:0},kd={};
+function say(s){const e=$('msg');e.textContent=s;e.style.opacity=1;msgT=150}
+function reset(){SP.forEach(s=>{s.l=0;s.ms=0});PB.concat(EB).forEach(o=>{o.on=0;o.m.visible=false});bo.on=0;B.visible=false;lvl=0;flight=0;hp=5;score=0;combo=0;comboT=999;xp=0;buf=[];trick=-1;px=py=pvx=bank=0;dash=0;st=1;$('ov').style.display='none';orbM.color.setHex(0xffffff);say('Fly! Try the A B X Y buttons')}
+SP.forEach(s=>{s.l=0;s.ms=0});
+function fire(i){const b=PB.find(o=>!o.on);if(!b)return;b.v.set(0,0,-1.4);if(bo.on)b.v.set(bo.x-px,bo.y-py,bo.z+1).setLength(1.4);b.m.position.set(px,py,-1);b.m.material.color.setHex(SP[i].c);b.d=SP[i].d*(1+.25*SP[i].ms)*(1+.1*combo);b.on=1;b.m.visible=true}
+function cast(i){const s=SP[i];if(!s.l){s.l=1;say('LEARNED '+s.n+'!');xp+=10}else say(s.n+' Lv'+(s.ms+1));if(s.ms<9)s.ms++;orbM.color.setHex(s.c);xp+=5;score+=100*combo;fire(i);buf=[]}
+function trk(k){if(st!=1)return;trick=k;tt=0;if(comboT>70)combo=0;combo++;comboT=0;xp++;score+=10*combo;buf.push(k);if(buf.length>4)buf.shift();
+ for(let i=4;i>=0;i--){const q=SP[i].s;if(buf.length>=q.length&&q.every((v,j)=>buf[buf.length-q.length+j]==v)){cast(i);break}}}
+function dsh(d){if(st==1){pvx=d*.55;dash=12}}
+function orb(o){const e=EB.find(o=>!o.on);if(!e)return;const v=e.v.set(px+o-bo.x,py-bo.y,-bo.z).setLength(.45+.04*lvl);e.m.position.set(bo.x,bo.y,bo.z+2);e.on=1;e.g=0;e.m.visible=true}
+function up(){
+ const dx=jx+(kd.ArrowRight?1:0)-(kd.ArrowLeft?1:0),dy=jy+(kd.ArrowUp?1:0)-(kd.ArrowDown?1:0);
+ px+=dx*.15+pvx;py+=dy*.12;pvx*=.85;if(dash>0)dash--;
+ px=Math.max(-4.5,Math.min(4.5,px));py=Math.max(-2.5,Math.min(2.8,py));bank+=((-dx*.45-pvx)-bank)*.2;
+ if(trick>=0){tt+=1/22;if(tt>=1){trick=-1;tt=0}}
+ comboT++;if(comboT>70){combo=0;buf=[]}if(shake>0)shake--;if(hf>0)hf--;if(msgT>0&&--msgT==0)$('msg').style.opacity=0;
+ const inv=trick>=0||dash>0;
+ SC.forEach(g=>{g.position.z+=.45;if(g.position.z>14)place(g,0)});
+ flight++;
+ if(!bo.on&&flight>1500){lvl++;bo.on=1;bo.mx=bo.hp=10+8*lvl;bo.t=0;bcd=90;B.visible=true;BM.forEach(m=>m.color.setHex(BC[(lvl-1)&3]));say('A BOSS APPROACHES!')}
+ if(bo.on){bo.t+=.02+.004*lvl;bo.x=Math.sin(bo.t)*3.6;bo.y=Math.cos(bo.t*1.3)*1.6;
+  if(--bcd<=0){bcd=Math.max(28,78-9*lvl);orb(0);if(lvl>=2){orb(2.5);orb(-2.5)}}}
+ EB.forEach(o=>{if(!o.on)return;o.m.position.add(o.v);o.m.rotation.y+=.15;o.m.rotation.x+=.1;const p=o.m.position,x=p.x-px,y=p.y-py;
+  if(p.z>7)return o.on=0,o.m.visible=false;
+  if(p.z>-1.2&&p.z<1.2&&x*x+y*y<1.5){if(inv){if(!o.g){o.g=1;score+=50*(combo+1);xp+=2;say('NEAR MISS! +bonus')}}
+   else{o.on=0;o.m.visible=false;hp--;combo=0;shake=14;say('OUCH!');if(hp<=0){st=2;$('ovt').textContent='You fell! Score '+score;$('go').textContent='TRY AGAIN';$('ov').style.display='flex'}}}});
+ PB.forEach(o=>{if(!o.on)return;o.m.position.add(o.v);o.m.rotation.y+=.3;if(o.m.position.z<-45){o.on=0;o.m.visible=false}
+  if(bo.on&&o.on&&o.m.position.distanceToSquared(new THREE.Vector3(bo.x,bo.y,bo.z))<9){o.on=0;o.m.visible=false;bo.hp-=Math.floor(o.d)+1;hf=6;score+=Math.floor(o.d*20);
+   if(bo.hp<=0){bo.on=0;B.visible=false;flight=0;xp+=40;score+=500*lvl;if(hp<5)hp++;EB.forEach(e=>{e.on=0;e.m.visible=false});say('BOSS DEFEATED! +1 HP')}}});
+}
+function hud(){$('sc').textContent='Score '+score+'  ·  Memory '+xp;$('hp').textContent='♥'.repeat(Math.max(hp,0))+'♡'.repeat(5-Math.max(hp,0));
+ $('boss').style.display=bo.on?'block':'none';$('bf').style.width=(bo.on?Math.max(0,bo.hp/bo.mx*100):0)+'%';
+ $('cb').textContent=(combo>1?'COMBO x'+combo+'   ':'')+buf.map(k=>LN[k]).join(' ')+(bo.on?'':'   Boss in '+Math.max(0,Math.ceil((1500-flight)/60))+'s');
+ $('book').innerHTML=SP.map((s,i)=>{const sh=s.l?s.s.length:Math.min(s.s.length,Math.floor(xp/(15+10*i)));
+  return (s.l?s.n+' Lv'+s.ms:'???')+' '+s.s.map((k,j)=>j<sh?'<span class="l '+LN[k]+'">'+LN[k]+'</span>':'<span class="l q">?</span>').join('')}).join('<br>')}
+function press(el,fn){el.addEventListener('pointerdown',e=>{e.preventDefault();el.classList.add('on');fn()});['pointerup','pointercancel','pointerleave'].forEach(n=>el.addEventListener(n,()=>el.classList.remove('on')))}
+['A','B','X','Y'].forEach((l,i)=>press($('b'+l),()=>trk(i)));press($('dL'),()=>dsh(-1));press($('dR'),()=>dsh(1));
+const sk=$('stick'),kb=$('knob');let sid=null;
+function mv(e){const r=sk.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let x=e.clientX-cx,y=e.clientY-cy;const d=Math.hypot(x,y),m=55;if(d>m){x*=m/d;y*=m/d}
+ kb.style.transform='translate('+x+'px,'+y+'px)';jx=x/m;jy=-y/m}
+sk.addEventListener('pointerdown',e=>{e.preventDefault();sid=e.pointerId;sk.setPointerCapture(sid);mv(e)});
+sk.addEventListener('pointermove',e=>{if(e.pointerId==sid)mv(e)});
+['pointerup','pointercancel'].forEach(n=>sk.addEventListener(n,e=>{if(e.pointerId==sid){sid=null;jx=jy=0;kb.style.transform=''}}));
+const km={z:0,x:1,c:2,v:3};
+addEventListener('keydown',e=>{kd[e.key]=1;if(e.key in km&&!e.repeat)trk(km[e.key]);if(e.key=='q')dsh(-1);if(e.key=='e')dsh(1)});addEventListener('keyup',e=>kd[e.key]=0);
+$('go').addEventListener('click',reset);
+document.addEventListener('gesturestart',e=>e.preventDefault());document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+let last=performance.now(),acc=0;
+function loop(n){requestAnimationFrame(loop);acc+=Math.min((n-last)/1000,.1);last=n;fr++;
+ while(acc>=1/60){acc-=1/60;if(st==1)up();else SC.forEach(g=>{g.position.z+=.2;if(g.position.z>14)place(g,0)})}
+ W.position.set(px,py,0);W.rotation.z=bank;P.rotation.set(0,0,0);
+ if(trick==0)P.rotation.z=tt*2*PI;if(trick==1)P.rotation.x=-tt*2*PI;if(trick==2)P.rotation.y=tt*2*PI;if(trick==3){P.rotation.z=tt*4*PI;P.rotation.x=-.2*tt}
+ RG.visible=trick>=0;RG.rotation.z=tt*4*PI;W.visible=st!=2||(fr&8)>0;
+ if(bo.on){B.position.set(bo.x,bo.y,bo.z);const f=Math.sin(fr*.15)*.35;wL.rotation.z=-PI/2+f;wR.rotation.z=PI/2-f;
+  BM.forEach(m=>m.emissive.setHex(hf>0?0xffffff:0))}
+ const sx=shake>0?(rnd()-.5)*.6:0,cz=innerWidth<innerHeight?12:9;
+ C.position.set(px*.6+sx,py*.5+2.6,cz);C.lookAt(px*.3,py*.3,-12);
+ R.render(S,C);if(fr%6==0)hud()}
+requestAnimationFrame(loop);
+</script></body></html>
